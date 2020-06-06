@@ -3,7 +3,7 @@
 //! Pipes are like byte-oriented channels that implement I/O traits for reading
 //! and writing.
 
-use futures_io::{AsyncBufRead, AsyncRead, AsyncWrite};
+use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite};
 use std::fmt;
 use std::io;
 use std::pin::Pin;
@@ -76,8 +76,8 @@ impl AsyncWrite for PipeWriter {
         Pin::new(&mut self.inner).poll_flush(cx)
     }
 
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.inner).poll_close(cx)
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.inner).poll_shutdown(cx)
     }
 }
 

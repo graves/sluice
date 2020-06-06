@@ -22,7 +22,7 @@
 
 use futures_channel::mpsc;
 use futures_core::{FusedStream, Stream};
-use futures_io::{AsyncBufRead, AsyncRead, AsyncWrite};
+use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite};
 use std::{
     io,
     io::{BufRead, Cursor, Write},
@@ -229,7 +229,7 @@ impl AsyncWrite for Writer {
         Poll::Ready(Ok(()))
     }
 
-    fn poll_close(mut self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
+    fn poll_shutdown(mut self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<()>> {
         self.buf_stream_tx.close_channel();
         Poll::Ready(Ok(()))
     }

@@ -1,15 +1,18 @@
-use futures::{
-    executor::block_on,
-    join,
-    prelude::*,
-};
+use tokio;
+use tokio::runtime;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use quickcheck_macros::quickcheck;
 use sluice::pipe::pipe;
 use std::io;
 
 #[test]
 fn read_empty() {
-    block_on(async {
+    let mut rt = runtime::Builder::new()
+        .enable_io()
+        .build()
+        .unwrap();
+
+    rt.block_on(async {
         let (mut reader, writer) = pipe();
         drop(writer);
 
@@ -21,12 +24,17 @@ fn read_empty() {
 
 #[test]
 fn read_then_write() {
-    block_on(async {
+    let mut rt = runtime::Builder::new()
+        .enable_io()
+        .build()
+        .unwrap();
+
+    rt.block_on(async {
         let (mut reader, mut writer) = pipe();
 
         writer.write_all(b"hello world").await.unwrap();
 
-        let mut dest = [0; 6];
+        let mut dest: [u8; 6] = [0; 6];
 
         assert_eq!(reader.read(&mut dest).await.unwrap(), 6);
         assert_eq!(&dest, b"hello ");
@@ -38,14 +46,19 @@ fn read_then_write() {
 
 #[test]
 fn reader_still_drainable_after_writer_disconnects() {
-    block_on(async {
+    let mut rt = runtime::Builder::new()
+        .enable_io()
+        .build()
+        .unwrap();
+
+    rt.block_on(async {
         let (mut reader, mut writer) = pipe();
 
         writer.write_all(b"hello").await.unwrap();
 
         drop(writer);
 
-        let mut dest = [0; 5];
+        let mut dest: [u8; 5] = [0; 5];
         assert_eq!(reader.read(&mut dest).await.unwrap(), 5);
         assert_eq!(&dest, b"hello");
 
@@ -58,7 +71,12 @@ fn reader_still_drainable_after_writer_disconnects() {
 
 #[test]
 fn writer_errors_if_reader_is_dropped() {
-    block_on(async {
+    let mut rt = runtime::Builder::new()
+        .enable_io()
+        .build()
+        .unwrap();
+
+    rt.block_on(async {
         let (reader, mut writer) = pipe();
 
         drop(reader);
@@ -69,33 +87,18 @@ fn writer_errors_if_reader_is_dropped() {
     })
 }
 
-#[test]
-fn pipe_lots_of_data() {
-    block_on(async {
-        let data = vec![0xff; 1_000_000];
-        let (mut reader, mut writer) = pipe();
-
-        join!(
-            async {
-                writer.write_all(&data).await.unwrap();
-                writer.close().await.unwrap();
-            },
-            async {
-                let mut out = Vec::new();
-                reader.read_to_end(&mut out).await.unwrap();
-                assert_eq!(&out[..], &data[..]);
-            },
-        );
-    })
-}
-
 #[quickcheck]
 fn read_write_chunks_random(chunks: u16) {
-    block_on(async {
-        let data = [0; 8192];
+    let mut rt = runtime::Builder::new()
+        .enable_io()
+        .build()
+        .unwrap();
+
+    rt.block_on(async {
+        let data: [u8; 8192] = [0; 8192];
         let (mut reader, mut writer) = pipe();
 
-        join!(
+        tokio::join!(
             async {
                 for chunk in 0..chunks {
                     writer.write_all(&data).await.unwrap();
